@@ -8,13 +8,19 @@ FROM debian:bookworm as builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     build-essential \
-    golang-go \
     cargo \
     rustc \
     ca-certificates \
     wget \
     curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Install newer Go version (1.23) from official source
+RUN wget -q https://go.dev/dl/go1.23.5.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go1.23.5.linux-amd64.tar.gz && \
+    rm go1.23.5.linux-amd64.tar.gz
+
+ENV PATH="/usr/local/go/bin:${PATH}"
 
 # Build Go-based tools
 WORKDIR /build
@@ -33,7 +39,7 @@ RUN git clone https://github.com/sa7mon/S3Scanner.git && \
 FROM debian:bookworm-slim
 
 # Build arguments for customization
-ARG VNC_PASSWORD=pwnedlabs
+ARG VNC_PASSWORD=omvia
 ARG DISPLAY=:1
 ARG VNC_PORT=5901
 ARG NOVNC_PORT=6080
@@ -43,14 +49,17 @@ ENV DEBIAN_FRONTEND=noninteractive \
     DISPLAY=${DISPLAY} \
     VNC_PORT=${VNC_PORT} \
     NOVNC_PORT=${NOVNC_PORT} \
-    USER=pwncloudos \
-    HOME=/home/pwncloudos \
+    USER=omvia \
+    HOME=/home/omvia\
     LANG=en_US.UTF-8 \
     LC_ALL=en_US.UTF-8
 
-# Create user
-RUN useradd -m -s /bin/zsh -G sudo pwncloudos && \
-    echo "pwncloudos:pwnedlabs" | chpasswd
+# Create user with passwordless sudo
+RUN useradd -m -s /bin/zsh -G sudo omvia && \
+    echo "omvia:omvia" | chpasswd && \
+    mkdir -p /etc/sudoers.d && \
+    echo "omvia ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/omvia && \
+    chmod 0440 /etc/sudoers.d/omvia
 
 # Install base system packages and desktop environment
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -65,17 +74,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # Window manager essentials
     gtk2-engines-murrine gtk2-engines-pixbuf \
     # Fonts
-    fonts-liberation fonts-dejavu ttf-ubuntu-font-family \
+    fonts-liberation fonts-dejavu \
     # Shells
     zsh zsh-autosuggestions zsh-syntax-highlighting \
-    # PowerShell
-    powershell \
     # Browsers
     chromium firefox-esr \
     # Network tools
     net-tools iputils-ping dnsutils netcat-traditional nmap curl wget \
     # Development tools
-    python3 python3-pip python3-venv pipx \
+    python3 python3-pip python3-venv python3-pycryptodome pipx \
     build-essential git golang-go \
     # Cloud SDKs dependencies
     apt-transport-https gnupg lsb-release software-properties-common \
@@ -89,6 +96,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Generate locale
 RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && locale-gen
+
+# Install PowerShell
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends wget apt-transport-https software-properties-common && \
+    wget -q "https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb" && \
+    dpkg -i packages-microsoft-prod.deb && \
+    rm packages-microsoft-prod.deb && \
+    apt-get update && \
+    apt-get install -y powershell && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install AWS CLI v2
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
@@ -108,11 +125,12 @@ RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.
     rm -rf /var/lib/apt/lists/*
 
 # Create tool directories
-RUN mkdir -p /opt/{aws_tools,azure_tools,gcp_tools,multi_cloud_tools,ps_tools,code_scanning,cracking_tools}
+RUN mkdir -p /opt/{aws_tools,azure_tools,gcp_tools,multi_cloud_tools,ps_tools,code_scanning,cracking_tools} && \
+    chown -R omvia:omvia /opt
 
 # Install Python-based tools via pipx (as pwncloudos user)
-USER pwncloudos
-WORKDIR /home/pwncloudos
+USER omvia
+WORKDIR /home/omvia
 
 # Ensure pipx is properly initialized
 RUN pipx ensurepath
@@ -190,41 +208,41 @@ RUN sudo /bin/sh -c "$(curl -fsSL https://powerpipe.io/install/powerpipe.sh)"
 # Install HashCat (from official repo)
 RUN apt-get update && apt-get install -y hashcat && rm -rf /var/lib/apt/lists/*
 
-# Install John the Ripper
-RUN git clone https://github.com/openwall/john /opt/cracking_tools/john && \
+# Install John the Ripper dependencies and build
+RUN apt-get update && apt-get install -y libssl-dev && rm -rf /var/lib/apt/lists/* && \
+    git clone https://github.com/openwall/john /opt/cracking_tools/john && \
     cd /opt/cracking_tools/john/src && \
     ./configure && make -s clean && make -sj4 && \
     ln -s /opt/cracking_tools/john/run/john /usr/local/bin/john
 
 # Install ffuf (fuzzing tool)
-RUN go install github.com/ffuf/ffuf/v2@latest && \
-    cp /root/go/bin/ffuf /usr/local/bin/
+RUN export GOBIN=/usr/local/bin && go install github.com/ffuf/ffuf/v2@latest
 
 # Set ownership of opt directories
-RUN chown -R pwncloudos:pwncloudos /opt/*
+RUN chown -R omvia:omvia /opt/*
 
-# Switch back to pwncloudos user
-USER pwncloudos
+# Switch back to omvia user
+USER omvia
 
 # Install Oh My Zsh
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
 
 # Copy configuration files from the repo
-COPY --chown=pwncloudos:pwncloudos docs/configs/shell/zsh/user/.zshrc /home/pwncloudos/.zshrc
+COPY --chown=omvia:omvia docs/configs/shell/zsh/user/.zshrc /home/omvia/.zshrc
 
 # Copy PowerShell profile
-RUN mkdir -p /home/pwncloudos/.config/powershell
-COPY --chown=pwncloudos:pwncloudos docs/configs/shell/powershell/user/Microsoft.PowerShell_profile.ps1 /home/pwncloudos/.config/powershell/Microsoft.PowerShell_profile.ps1
+RUN mkdir -p /home/omvia/.config/powershell
+COPY --chown=omvia:omvia docs/configs/shell/powershell/user/Microsoft.PowerShell_profile.ps1 /home/omvia/.config/powershell/Microsoft.PowerShell_profile.ps1
 
 # Extract XFCE configuration
 COPY docs/configs/xfce/pwncloudos-xfce4-profile-pack.tar.gz /tmp/
-RUN cd /home/pwncloudos && \
+RUN cd /home/omvia && \
     tar xzf /tmp/pwncloudos-xfce4-profile-pack.tar.gz && \
-    rm /tmp/pwncloudos-xfce4-profile-pack.tar.gz && \
-    chown -R pwncloudos:pwncloudos /home/pwncloudos/.config
+    sudo rm /tmp/pwncloudos-xfce4-profile-pack.tar.gz && \
+    sudo chown -R omvia:omvia /home/omvia/.config
 
 # Create VNC directory and set VNC password
-RUN mkdir -p /home/pwncloudos/.vnc
+RUN mkdir -p /home/omvia/.vnc
 
 # Switch to root for VNC setup
 USER root
@@ -238,7 +256,7 @@ RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/vnc-startup.sh
 EXPOSE ${VNC_PORT} ${NOVNC_PORT}
 
 # Set working directory
-WORKDIR /home/pwncloudos
+WORKDIR /home/omvia
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \

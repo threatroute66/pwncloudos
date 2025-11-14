@@ -1,16 +1,16 @@
 # ~/.zshrc: executed by zsh for interactive shells.
 
-# Location of starship config File
-export STARSHIP_CONFIG="$HOME/.config/starship/starship.toml"
+# Location of starship config File (commented out - starship not installed)
+# export STARSHIP_CONFIG="$HOME/.config/starship/starship.toml"
 
-# Initialize Starship prompt
-eval "$(starship init zsh)"
+# Initialize Starship prompt (commented out - using custom prompt instead)
+# eval "$(starship init zsh)"
 
 # Enable colors in prompt
 autoload -U colors && colors
 
-# Define the prompt (Kali custom prompt and PwncloudOS prompt)
-PROMPT=$'┌─[%F{#FF33FF}pwnedlabs%f@%F{#7EC8E3}cloud%f]─[%F{#6FFF4F}%~%f]$(if [[ -n $VIRTUAL_ENV ]]; then echo "%F{#D92121}(${VIRTUAL_ENV:t})%f"; fi)\n└──╼ $ '
+# Define the prompt (ASCII version - no Unicode box characters)
+PROMPT=$'%F{#FF33FF}omvia%f@%F{#7EC8E3}cloud%f [%F{#6FFF4F}%~%f]$(if [[ -n $VIRTUAL_ENV ]]; then echo " %F{#D92121}(${VIRTUAL_ENV:t})%f"; fi)\n$ '
 
 # If not running interactively, don't do anything
 [[ -o interactive ]] || return
