@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  pwncloudos:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VNC_PASSWORD: pwnedlabs
+        DISPLAY: ":1"
+        VNC_PORT: 5901
+        NOVNC_PORT: 6080
+    image: pwncloudos:latest
+    container_name: pwncloudos
+    hostname: pwncloudos
+
+    # Port mappings
+    ports:
+      - "5901:5901"   # VNC port
+      - "6080:6080"   # noVNC web interface
+
+    # Environment variables
+    environment:
+      - DISPLAY=:1
+      - VNC_RESOLUTION=1920x1080
+      - VNC_PASSWORD=pwnedlabs
+      - TZ=UTC
+
+    # Volumes for persistent data
+    volumes:
+      # Persist user home directory
+      - pwncloudos-home:/home/pwncloudos
+      # Persist cloud credentials
+      - pwncloudos-aws:/home/pwncloudos/.aws
+      - pwncloudos-azure:/home/pwncloudos/.azure
+      - pwncloudos-gcp:/home/pwncloudos/.config/gcloud
+      # Optional: Mount host directory for file sharing
+      # - ./shared:/home/pwncloudos/shared
+
+    # Shared memory size (important for browsers)
+    shm_size: '2gb'
+
+    # Resource limits (adjust based on your system)
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 6G
+        reservations:
+          cpus: '2'
+          memory: 4G
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Security options
+    security_opt:
+      - seccomp:unconfined
+
+    # Privileged mode (needed for some security tools)
+    # WARNING: Only use in trusted environments
+    privileged: false
+
+    # Capabilities (alternative to privileged mode)
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+
+    # Network mode
+    network_mode: bridge
+
+volumes:
+  pwncloudos-home:
+    driver: local
+  pwncloudos-aws:
+    driver: local
+  pwncloudos-azure:
+    driver: local
+  pwncloudos-gcp:
+    driver: local
