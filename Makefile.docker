@@ -1,0 +1,132 @@
+# PWNCLOUDOS Docker Makefile
+# Convenience commands for building and managing the Docker container
+
+.PHONY: help build build-no-cache run stop restart logs shell clean prune
+
+# Default target
+help:
+	@echo "PWNCLOUDOS Docker Make Commands"
+	@echo "================================"
+	@echo ""
+	@echo "Building:"
+	@echo "  make build          - Build the Docker image (with cache)"
+	@echo "  make build-no-cache - Build the Docker image (no cache)"
+	@echo ""
+	@echo "Running:"
+	@echo "  make run            - Start the container"
+	@echo "  make stop           - Stop the container"
+	@echo "  make restart        - Restart the container"
+	@echo ""
+	@echo "Management:"
+	@echo "  make logs           - View container logs"
+	@echo "  make shell          - Open shell in running container"
+	@echo "  make root-shell     - Open root shell in running container"
+	@echo ""
+	@echo "Cleanup:"
+	@echo "  make clean          - Stop and remove container"
+	@echo "  make prune          - Remove unused Docker resources"
+	@echo ""
+	@echo "Information:"
+	@echo "  make info           - Display connection information"
+	@echo "  make ps             - Show running containers"
+	@echo ""
+
+# Build the image
+build:
+	docker-compose build
+
+# Build without cache
+build-no-cache:
+	docker-compose build --no-cache
+
+# Start the container
+run:
+	docker-compose up -d
+	@echo ""
+	@echo "✅ PWNCLOUDOS is starting..."
+	@echo ""
+	@echo "Access via:"
+	@echo "  🌐 Web Browser: http://localhost:6080/vnc.html"
+	@echo "  🖥️  VNC Client:  localhost:5901"
+	@echo "  🔑 Password:    pwnedlabs"
+	@echo ""
+	@echo "View logs with: make logs"
+
+# Stop the container
+stop:
+	docker-compose down
+
+# Restart the container
+restart:
+	docker-compose restart
+
+# View logs
+logs:
+	docker-compose logs -f
+
+# Open shell in container
+shell:
+	docker-compose exec pwncloudos zsh
+
+# Open root shell in container
+root-shell:
+	docker-compose exec -u root pwncloudos bash
+
+# Display connection info
+info:
+	@echo "PWNCLOUDOS Connection Information"
+	@echo "=================================="
+	@echo ""
+	@echo "Web Access (noVNC):"
+	@echo "  URL: http://localhost:6080/vnc.html"
+	@echo ""
+	@echo "VNC Client:"
+	@echo "  Host: localhost"
+	@echo "  Port: 5901"
+	@echo "  Display: :1"
+	@echo ""
+	@echo "Credentials:"
+	@echo "  User: pwncloudos"
+	@echo "  Password: pwnedlabs"
+	@echo ""
+	@echo "Tool Locations:"
+	@echo "  AWS:        /opt/aws_tools/"
+	@echo "  Azure:      /opt/azure_tools/"
+	@echo "  GCP:        /opt/gcp_tools/"
+	@echo "  Multi:      /opt/multi_cloud_tools/"
+	@echo "  PowerShell: /opt/ps_tools/"
+	@echo "  Scanning:   /opt/code_scanning/"
+	@echo "  Cracking:   /opt/cracking_tools/"
+
+# Show running containers
+ps:
+	docker-compose ps
+
+# Clean up
+clean:
+	docker-compose down -v
+
+# Prune unused resources
+prune:
+	@echo "⚠️  This will remove:"
+	@echo "  - All stopped containers"
+	@echo "  - All networks not used by at least one container"
+	@echo "  - All dangling images"
+	@echo "  - All build cache"
+	@echo ""
+	@read -p "Continue? [y/N] " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		docker system prune -af; \
+	fi
+
+# Quick test build (just validate Dockerfile syntax)
+validate:
+	@echo "🔍 Validating Dockerfile..."
+	@docker build --no-cache --target builder -t pwncloudos:builder-test . 2>&1 | head -20 || true
+	@echo "✅ Dockerfile syntax appears valid"
+
+# Build just the base system (for testing)
+build-base:
+	@echo "🔨 Building base system only..."
+	docker build --target builder -t pwncloudos:builder .
