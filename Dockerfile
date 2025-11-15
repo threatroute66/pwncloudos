@@ -2,7 +2,7 @@
 # Multi-stage build for optimized image size
 
 # Stage 1: Builder - for compiling tools
-FROM debian:bookworm as builder
+FROM debian:bookworm AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -234,12 +234,20 @@ COPY --chown=omvia:omvia docs/configs/shell/zsh/user/.zshrc /home/omvia/.zshrc
 RUN mkdir -p /home/omvia/.config/powershell
 COPY --chown=omvia:omvia docs/configs/shell/powershell/user/Microsoft.PowerShell_profile.ps1 /home/omvia/.config/powershell/Microsoft.PowerShell_profile.ps1
 
+# Copy brand logo for wallpaper
+RUN sudo mkdir -p /usr/share/pwncloudos/brand
+COPY ./logo.png /usr/share/pwncloudos/brand/logo.png
+
 # Extract XFCE configuration
-COPY docs/configs/xfce/pwncloudos-xfce4-profile-pack.tar.gz /tmp/
-RUN cd /home/omvia && \
-    tar xzf /tmp/pwncloudos-xfce4-profile-pack.tar.gz && \
-    sudo rm /tmp/pwncloudos-xfce4-profile-pack.tar.gz && \
-    sudo chown -R omvia:omvia /home/omvia/.config
+COPY --chown=omvia:omvia docs/configs/xfce/pwncloudos-xfce4-profile-pack.tar.gz /tmp/
+RUN cd /tmp && \
+    tar xzf pwncloudos-xfce4-profile-pack.tar.gz && \
+    mkdir -p /home/omvia/.config/xfce4/xfconf/xfce-perchannel-xml && \
+    mkdir -p /home/omvia/.local/share/applications && \
+    cp pwncloudos-xfce4-profile/*.xml /home/omvia/.config/xfce4/xfconf/xfce-perchannel-xml/ && \
+    cp -r pwncloudos-xfce4-profile/custom-launchers/* /home/omvia/.local/share/applications/ && \
+    sudo chown -R omvia:omvia /home/omvia/.config /home/omvia/.local && \
+    rm -rf /tmp/pwncloudos-xfce4-profile /tmp/pwncloudos-xfce4-profile-pack.tar.gz
 
 # Create VNC directory and set VNC password
 RUN mkdir -p /home/omvia/.vnc
