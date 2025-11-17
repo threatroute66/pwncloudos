@@ -67,7 +67,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     sudo locales ca-certificates wget curl git vim nano \
     # Lightweight desktop environment (XFCE optimized)
     xfce4 xfce4-terminal xfce4-goodies \
-    dbus-x11 x11-xserver-utils \
+    dbus-x11 x11-xserver-utils xclip \
     # VNC server and noVNC for browser access
     tigervnc-standalone-server tigervnc-common \
     novnc websockify \
@@ -236,7 +236,7 @@ COPY --chown=omvia:omvia docs/configs/shell/powershell/user/Microsoft.PowerShell
 
 # Copy brand logo for wallpaper
 RUN sudo mkdir -p /usr/share/pwncloudos/brand
-COPY ./logo.png /usr/share/pwncloudos/brand/logo.png
+COPY ./logowithcredit.png /usr/share/pwncloudos/brand/logo.png
 
 # Extract XFCE configuration
 COPY --chown=omvia:omvia docs/configs/xfce/pwncloudos-xfce4-profile-pack.tar.gz /tmp/
